@@ -4,15 +4,8 @@
 #include <stdio.h>
 #include <math.h>
 
-double fun(const double x)
-{
-    return sin(x);
-    // return x*sin(5*x);
-}
-
 double trapezoidal(const gsl_matrix *M)
 {
-    // (a+b)*h/2
     double sum=0;
     for (size_t i = 0; i < M->size1-1; i++)
     {
@@ -27,40 +20,81 @@ double trapezoidal(const gsl_matrix *M)
 }
 
 
-double simson(const gsl_matrix *M)
+double simpson(const gsl_matrix *M)
 {
     double sum=0;
     const double h = gsl_matrix_get(M,1,0)-gsl_matrix_get(M,0,0);
 
     for (size_t i = 1; i < M->size1-1; i+=2)
     {
-        const double s = h/3.0*(gsl_matrix_get(M,i-1,1)+4*gsl_matrix_get(M,i,1)+gsl_matrix_get(M,i+1,1));
+        const double s = h/3.0*(gsl_matrix_get(M,i-1,1)+4.0*gsl_matrix_get(M,i,1)+gsl_matrix_get(M,i+1,1));
         sum+=s;
     }
 
     return sum;
 }
 
+int save_3_value_to_file(const double value1,const double value2,const double value3, const char *name)
+{
+    FILE *f;
+    f = fopen(name, "a");
+    if (f == NULL)
+    {
+        perror("Nie udalo sie otworzyc pliku do zapisu");
+        return 0;
+    }
+
+    fprintf(f, "%f\t%f\t%f\n", value1,value2,value3);
+
+    fflush(f);
+    fclose(f);
+
+    return 1;
+}
+
 int main()
 {
-    const int n = 201; //liczba węzłów
     const double start_x = 0;
     const double end_x = M_PI;
-    
-    gsl_matrix *M = gsl_matrix_calloc(n,2);
 
-    // wypełienie macierzy
-    for(int i = 0; i < n; ++i)
+    for(int n = 11;n<=201;n+=2)
     {
-        const double tmp = start_x + (end_x - start_x) * i / (n - 1);
+        gsl_matrix *M1 = gsl_matrix_calloc(n,2);
 
-        gsl_matrix_set(M, i, 0,tmp);
-        gsl_matrix_set(M, i, 1, fun(tmp));
+        for(int i = 0; i < M1->size1; ++i)
+        {
+            const double x = start_x + (end_x - start_x) * i / n;
+
+            gsl_matrix_set(M1, i, 0,x);
+            gsl_matrix_set(M1, i, 1, sin(x));
+        }
+
+        double bladTrapez= log(fabs(2-trapezoidal(M1)));
+        double bladSimpson= log(fabs(2-simpson(M1)));
+
+        save_3_value_to_file(n,bladTrapez,bladSimpson,"sin(x).csv");
+        gsl_matrix_free(M1);
     }
 
 
-    printf("%f\n", trapezoidal(M));
-    printf("%f\n", simson(M));
+    for(int n = 11;n<=201;n+=2)
+    {
+        gsl_matrix *M1 = gsl_matrix_calloc(n,2);
+
+        for(int i = 0; i < M1->size1; ++i)
+        {
+            const double x = start_x + (end_x - start_x) * i / n;
+
+            gsl_matrix_set(M1, i, 0,x);
+            gsl_matrix_set(M1, i, 1, x*sin(x*5.0));
+        }
+        double bladTrapez= log(fabs(M_PI/5.0-trapezoidal(M1)));
+        double bladSimpson= log(fabs(M_PI/5.0-simpson(M1)));
+
+        save_3_value_to_file(n,bladTrapez,bladSimpson,"xsin(x5).csv");
+        gsl_matrix_free(M1);
+    }
+
 
 
 
